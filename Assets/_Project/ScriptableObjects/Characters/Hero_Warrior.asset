@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 014d7bdd21f884d34ab857044f829227, type: 3}
+  m_Name: Hero_Warrior
+  m_EditorClassIdentifier: Assembly-CSharp::Project.Combat.Data.CharacterStatsData
+  characterName: Hero Warrior
+  isPlayerControlled: 1
+  maxHP: 120
+  baseAttack: 15
+  baseDefense: 5
+  baseSpeed: 10
+  parryWindowDuration: 0.15
+  dodgeWindowDuration: 0.3
+  skills:
+  - {fileID: 11400000, guid: 7ad8a45ed3c904f3097dc05acdee125f, type: 2}
