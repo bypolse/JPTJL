@@ -22,6 +22,7 @@ namespace JPTJL.Combat
         // Core Components
         public StateMachine StateMachine { get; private set; }
         public ITimingEngine TimingEngine { get; private set; }
+        public KeyQTEEngine KeyQTEEngine { get; private set; }
 
         // Combatants
         public CombatParticipant Player { get; private set; }
@@ -32,10 +33,28 @@ namespace JPTJL.Combat
         public SkillData CurrentSkill { get; internal set; }
         public SkillData EnemyDefaultSkill { get; internal set; }
         public TimingResult OffensiveTimingResult { get; internal set; }
+        public System.Collections.Generic.List<QTEHitResult> LastQTEResults { get; internal set; } = new System.Collections.Generic.List<QTEHitResult>();
         public DefenseType ActiveDefenseType { get; internal set; }
         public TimingResult DefensiveTimingResult { get; internal set; }
         public TimingWindowConfig ActiveDefenseConfig { get; internal set; }
         public bool BattleWon { get; internal set; }
+
+        /// <summary>
+        /// Direct mapping to the high-level 4 turn states required by the game design.
+        /// </summary>
+        public CombatTurnState CurrentTurnState
+        {
+            get
+            {
+                if (StateMachine?.CurrentState is BattleEndState)
+                    return CombatTurnState.FinCombate;
+                if (StateMachine?.CurrentState is QTEExecutionState)
+                    return CombatTurnState.EjecutandoQTE;
+                if (StateMachine?.CurrentState is EnemyTurnState || StateMachine?.CurrentState is DefenseWindowState)
+                    return CombatTurnState.TurnoEnemigo;
+                return CombatTurnState.TurnoJugador;
+            }
+        }
 
         // FSM States
         public BattleStartState BattleStartState { get; private set; }
@@ -69,6 +88,7 @@ namespace JPTJL.Combat
         {
             StateMachine = new StateMachine();
             TimingEngine = new TimingEngine();
+            KeyQTEEngine = new KeyQTEEngine();
 
             BattleStartState = new BattleStartState(this);
             PlayerTurnState = new PlayerTurnState(this);
@@ -106,6 +126,17 @@ namespace JPTJL.Combat
             if (StateMachine.CurrentState is ActionSelectionState actionState)
             {
                 actionState.OnSkillChosen(skill);
+            }
+        }
+
+        /// <summary>
+        /// Called by input handler during an active offensive QTE when a specific key (W, A, S, D, Z, X) is pressed.
+        /// </summary>
+        public void TriggerKeyQTEInput(KeyCode key)
+        {
+            if (StateMachine.CurrentState is QTEExecutionState qteState)
+            {
+                qteState.OnPlayerKeyInput(key);
             }
         }
 

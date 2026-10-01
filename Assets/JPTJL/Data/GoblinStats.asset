@@ -15,7 +15,8 @@ MonoBehaviour:
   characterName: Goblin Rogue
   isPlayer: 0
   maxHealth: 85
-  baseAttack: 16
+  maxMana: 0
+  baseAttack: 12
   baseDefense: 4
   speed: 10
   criticalChance: 0.05

@@ -14,9 +14,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::JPTJL.Data.CharacterStatsData
   characterName: Hero
   isPlayer: 1
-  maxHealth: 120
-  baseAttack: 20
-  baseDefense: 8
+  maxHealth: 100
+  maxMana: 50
+  baseAttack: 0
+  baseDefense: 5
   speed: 12
-  criticalChance: 0.15
+  criticalChance: 0.05
   criticalMultiplier: 1.5

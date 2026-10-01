@@ -351,6 +351,7 @@ GameObject:
   - component: {fileID: 1529347579}
   - component: {fileID: 1529347578}
   - component: {fileID: 1529347577}
+  - component: {fileID: 1529347580}
   m_Layer: 0
   m_Name: CombatSystem
   m_TagString: Untagged
@@ -372,8 +373,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::JPTJL.Combat.CombatInputAdapter
   combatController: {fileID: 1529347578}
   playerSkills:
-  - {fileID: 11400000, guid: fd7243922d011ca4fa03b2ff64c2f8bc, type: 2}
-  - {fileID: 11400000, guid: b31fa148bf48b634e85b52d48416e71c, type: 2}
+  - {fileID: 11400000, guid: 6f3af64879337f54eb25063910e1b506, type: 2}
+  - {fileID: 11400000, guid: 10f6b61e3786e6d4c987a39de11cfe47, type: 2}
+  - {fileID: 11400000, guid: b4f8ed2bdf8eafb42afb59290ffe7670, type: 2}
+  - {fileID: 11400000, guid: c7c3403c24a11ca4895e229e9c3d95e4, type: 2}
 --- !u!114 &1529347578
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -388,7 +391,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::JPTJL.Combat.CombatController
   defaultPlayerStats: {fileID: 11400000, guid: 5ff4f33c41b4426408693b320f5f56aa, type: 2}
   defaultEnemyStats: {fileID: 11400000, guid: d4a041ff506b42648a271530e164955d, type: 2}
-  defaultPlayerSkill: {fileID: 11400000, guid: fd7243922d011ca4fa03b2ff64c2f8bc, type: 2}
+  defaultPlayerSkill: {fileID: 11400000, guid: 6f3af64879337f54eb25063910e1b506, type: 2}
   defaultEnemySkill: {fileID: 11400000, guid: d91a1ae7a6c0de7439f51c40edc09c4b, type: 2}
   autoStartBattle: 1
 --- !u!4 &1529347579
@@ -406,6 +409,24 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1529347580
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1529347576}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b7202883c91b1c0428aaca28e12f256d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::JPTJL.UI.CombatDebugUI
+  combatController: {fileID: 1529347578}
+  skills:
+  - {fileID: 11400000, guid: 6f3af64879337f54eb25063910e1b506, type: 2}
+  - {fileID: 11400000, guid: 10f6b61e3786e6d4c987a39de11cfe47, type: 2}
+  - {fileID: 11400000, guid: b4f8ed2bdf8eafb42afb59290ffe7670, type: 2}
+  - {fileID: 11400000, guid: c7c3403c24a11ca4895e229e9c3d95e4, type: 2}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

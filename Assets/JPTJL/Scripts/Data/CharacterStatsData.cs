@@ -15,6 +15,7 @@ namespace JPTJL.Data
 
         [Header("Core Attributes")]
         [SerializeField] private int maxHealth = 100;
+        [SerializeField] private int maxMana = 50;
         [SerializeField] private int baseAttack = 15;
         [SerializeField] private int baseDefense = 5;
         [SerializeField] private float speed = 10f;
@@ -24,6 +25,7 @@ namespace JPTJL.Data
         public string CharacterName => characterName;
         public bool IsPlayer => isPlayer;
         public int MaxHealth => maxHealth;
+        public int MaxMana => maxMana;
         public int BaseAttack => baseAttack;
         public int BaseDefense => baseDefense;
         public float Speed => speed;

@@ -10,20 +10,21 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 38ccb32d3d1c1fe4b82ebac0ca2f877e, type: 3}
-  m_Name: 
+  m_Name: Skill_DobleEstocada
   m_EditorClassIdentifier: Assembly-CSharp::JPTJL.Data.SkillData
-  skillId: skill_enemy_claw
-  skillName: Zarpazo Goblin
-  description: "Ataque r\xE1pido del enemigo."
+  skillId: skill_doble_estocada
+  skillName: Doble Estocada
+  description: "Dos cortes consecutivos. Da\xF1o: 2x6 (12) | Man\xE1: 8 MP | QTE:
+    2 teclas."
   skillType: 0
-  hitCount: 1
+  hitCount: 2
   shieldAmount: 0
-  basePower: 15
+  basePower: 6
   attackScaling: 0
-  manaCost: 5
+  manaCost: 8
   energyCost: 0
-  requiresQTE: 0
-  qteKeyCount: 1
+  requiresQTE: 1
+  qteKeyCount: 2
   qteDuration: 1.2
   timingConfig:
     totalDuration: 1.2

@@ -29,16 +29,55 @@ namespace JPTJL.Combat.States
             DefenseType defenseType = controller.IsPlayerTurn ? DefenseType.None : controller.ActiveDefenseType;
             TimingResult defenseTiming = controller.IsPlayerTurn ? TimingResult.Miss : controller.DefensiveTimingResult;
 
-            DamageResult damageResult = DamageCalculator.Calculate(
-                attacker: attacker.StatsData,
-                defender: defender.StatsData,
-                skill: controller.CurrentSkill,
-                attackTiming: controller.OffensiveTimingResult,
-                defenseAction: defenseType,
-                defenseTiming: defenseTiming
-            );
+            DamageResult damageResult;
 
-            // Apply direct damage to defender
+            if (controller.IsPlayerTurn && controller.LastQTEResults != null && controller.LastQTEResults.Count > 0)
+            {
+                // Multi-hit / single-hit resolution from Key QTE Engine
+                int totalRaw = 0;
+                float totalPostMultiplier = 0f;
+                int baseHitPower = controller.CurrentSkill != null ? controller.CurrentSkill.BasePower : 10;
+                float scaling = controller.CurrentSkill != null ? controller.CurrentSkill.AttackScaling : 0f;
+
+                for (int i = 0; i < controller.LastQTEResults.Count; i++)
+                {
+                    var hit = controller.LastQTEResults[i];
+                    float hitRaw = baseHitPower + (attacker.StatsData.BaseAttack * scaling);
+                    float hitModified = hitRaw * hit.DamageMultiplier;
+
+                    totalRaw += Mathf.RoundToInt(hitRaw);
+                    totalPostMultiplier += hitModified;
+                }
+
+                // Armor mitigation
+                float armorFactor = 100f / (100f + Mathf.Max(0, defender.StatsData.BaseDefense));
+                int finalDamage = Mathf.Max(controller.LastQTEResults.Count, Mathf.RoundToInt(totalPostMultiplier * armorFactor));
+
+                damageResult = new DamageResult(
+                    rawDamage: totalRaw,
+                    finalDamage: finalDamage,
+                    isCritical: false,
+                    attackTiming: controller.OffensiveTimingResult,
+                    defenseAction: DefenseType.None,
+                    defenseTiming: TimingResult.Miss,
+                    wasParried: false,
+                    wasDodged: false,
+                    counterDamage: 0
+                );
+            }
+            else
+            {
+                damageResult = DamageCalculator.Calculate(
+                    attacker: attacker.StatsData,
+                    defender: defender.StatsData,
+                    skill: controller.CurrentSkill,
+                    attackTiming: controller.OffensiveTimingResult,
+                    defenseAction: defenseType,
+                    defenseTiming: defenseTiming
+                );
+            }
+
+            // Apply direct damage to defender (Shield absorbs first before HP inside CombatParticipant.TakeDamage)
             defender.TakeDamage(damageResult.FinalDamage);
 
             // Apply counter damage to attacker if a perfect parry was achieved

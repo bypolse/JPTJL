@@ -10,17 +10,17 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 38ccb32d3d1c1fe4b82ebac0ca2f877e, type: 3}
-  m_Name: 
+  m_Name: Skill_BarreraEscudo
   m_EditorClassIdentifier: Assembly-CSharp::JPTJL.Data.SkillData
-  skillId: skill_enemy_claw
-  skillName: Zarpazo Goblin
-  description: "Ataque r\xE1pido del enemigo."
-  skillType: 0
+  skillId: skill_barrera_escudo
+  skillName: Barrera Escudo
+  description: "Crea una barrera protectora que absorbe 10 de da\xF1o. Coste: 0 MP."
+  skillType: 1
   hitCount: 1
-  shieldAmount: 0
-  basePower: 15
+  shieldAmount: 10
+  basePower: 0
   attackScaling: 0
-  manaCost: 5
+  manaCost: 0
   energyCost: 0
   requiresQTE: 0
   qteKeyCount: 1
