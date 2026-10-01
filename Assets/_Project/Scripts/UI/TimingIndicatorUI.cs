@@ -6,6 +6,11 @@ using UnityEngine.UI;
 namespace Project.Combat.UI
 {
     /// <summary>
+    /// Result of a player's timed input against the shrinking ring.
+    /// </summary>
+    public enum TimingResult { None, Miss, Good, Perfect }
+
+    /// <summary>
     /// Visualizes the attack QTE as a shrinking ring that closes toward a static
     /// target ring. Color tints the ring based on current timing zone.
     /// This component is purely presentational: it reads data passed via public
@@ -60,6 +65,18 @@ namespace Project.Combat.UI
         private Coroutine _shrinkRoutine;
         private Coroutine _feedbackRoutine;
 
+        // Cached window values so TryHit() can evaluate without extra parameters.
+        private float _goodStart;
+        private float _goodEnd;
+        private float _perfectStart;
+        private float _perfectEnd;
+
+        // Normalized progress [0,1] written every frame by ShrinkRoutine.
+        private float _currentNormalizedTime;
+
+        // True while ShrinkRoutine is running and awaiting player input.
+        private bool _isActive;
+
         // ─────────────────────────────────────────
         //  Public API
         // ─────────────────────────────────────────
@@ -81,8 +98,18 @@ namespace Project.Combat.UI
         {
             StopAllActiveCoroutines();
 
+            // Cache windows so TryHit() can evaluate without extra parameters.
+            _goodStart    = goodStart;
+            _goodEnd      = goodEnd;
+            _perfectStart = perfectStart;
+            _perfectEnd   = perfectEnd;
+
+            _currentNormalizedTime = 0f;
+            _isActive = true;
+
             visualRoot.SetActive(true);
             feedbackText.gameObject.SetActive(false);
+            shrinkingRing.gameObject.SetActive(true);
             shrinkingRing.localScale = StartScale;
 
             _shrinkRoutine = StartCoroutine(
@@ -90,11 +117,65 @@ namespace Project.Combat.UI
         }
 
         /// <summary>
+        /// Called when the player presses the action button during an active QTE.
+        /// Stops the animation immediately, evaluates the current normalized progress
+        /// against the cached timing windows, shows feedback, and returns the result.
+        /// Returns <see cref="TimingResult.None"/> if the indicator is not active.
+        /// </summary>
+        public TimingResult TryHit()
+        {
+            if (!_isActive)
+                return TimingResult.None;
+
+            // Stop the shrink animation — capture progress at this exact frame.
+            if (_shrinkRoutine != null)
+            {
+                StopCoroutine(_shrinkRoutine);
+                _shrinkRoutine = null;
+            }
+
+            _isActive = false;
+
+            // Evaluate captured progress against cached windows.
+            TimingResult result;
+
+            if (_currentNormalizedTime >= _perfectStart && _currentNormalizedTime <= _perfectEnd)
+            {
+                result = TimingResult.Perfect;
+                DisplayFeedback("PERFECT!", perfectColor);
+            }
+            else if (_currentNormalizedTime >= _goodStart && _currentNormalizedTime <= _goodEnd)
+            {
+                result = TimingResult.Good;
+                DisplayFeedback("GOOD!", goodColor);
+            }
+            else
+            {
+                result = TimingResult.Miss;
+                DisplayFeedback("MISS", missColor);
+            }
+
+            // Hide the ring but keep the feedback label alive.
+            shrinkingRing.gameObject.SetActive(false);
+
+            return result;
+        }
+
+        /// <summary>
+        /// True while the shrink-ring animation is running and awaiting player input.
+        /// Read by external callers (e.g. MockCombatTester) to toggle Space behaviour.
+        /// </summary>
+        public bool IsActive => _isActive;
+
+
+
+        /// <summary>
         /// Immediately stops the shrink coroutine and hides the indicator.
         /// Call this when the player provides input before time runs out.
         /// </summary>
         public void HideIndicator()
         {
+            _isActive = false;
             StopAllActiveCoroutines();
             visualRoot.SetActive(false);
         }
@@ -124,18 +205,21 @@ namespace Project.Combat.UI
         {
             float elapsed = 0f;
 
+            // Re-enable shrinking ring in case TryHit() hid it in a previous run.
+            shrinkingRing.gameObject.SetActive(true);
+
             while (elapsed < duration)
             {
                 elapsed += Time.deltaTime;
-                float normalizedTime = Mathf.Clamp01(elapsed / duration);
+                _currentNormalizedTime = Mathf.Clamp01(elapsed / duration);
 
                 // Interpolate scale from start to target.
-                shrinkingRing.localScale = Vector3.Lerp(StartScale, EndScale, normalizedTime);
+                shrinkingRing.localScale = Vector3.Lerp(StartScale, EndScale, _currentNormalizedTime);
 
-                // Tint ring based on current zone (Perfect checked first — it's the inner zone).
-                if (normalizedTime >= perfectStart && normalizedTime <= perfectEnd)
+                // Tint ring based on current zone (Perfect first — it is the inner zone).
+                if (_currentNormalizedTime >= perfectStart && _currentNormalizedTime <= perfectEnd)
                     shrinkingImage.color = perfectColor;
-                else if (normalizedTime >= goodStart && normalizedTime <= goodEnd)
+                else if (_currentNormalizedTime >= goodStart && _currentNormalizedTime <= goodEnd)
                     shrinkingImage.color = goodColor;
                 else
                     shrinkingImage.color = normalColor;
@@ -144,6 +228,7 @@ namespace Project.Combat.UI
             }
 
             // Duration elapsed with no player input → auto Miss.
+            _isActive = false;
             shrinkingRing.localScale = EndScale;
             DisplayFeedback("MISS", missColor);
             visualRoot.SetActive(false);

@@ -79,10 +79,25 @@ namespace Project.Combat.Testing
         /// Space — Launch the shrink-ring QTE using the hero's first skill.
         /// Falls back gracefully if heroData has no skills assigned.
         /// </summary>
+/// <summary>
+        /// Space - two-phase toggle:
+        ///   - Indicator OFF: start the QTE with the hero's first skill.
+        ///   - Indicator ON:  call TryHit() and log the result.
+        /// Falls back gracefully if heroData has no skills assigned.
+        /// </summary>
         private void HandleQTEInput()
         {
             if (!Input.GetKeyDown(KeyCode.Space)) return;
 
+            // Phase 2: indicator is running - evaluate the player's hit.
+            if (timingUI.IsActive)
+            {
+                Project.Combat.UI.TimingResult resultado = timingUI.TryHit();
+                Debug.Log($"Resultado del QTE: {resultado}");
+                return;
+            }
+
+            // Phase 1: indicator is idle - launch the QTE.
             SkillData skill = heroData.GetSkill(0);
 
             if (skill == null)
@@ -99,10 +114,10 @@ namespace Project.Combat.Testing
                 skill.perfectWindowStart,
                 skill.perfectWindowEnd);
 
-            Debug.Log($"[MockCombatTester] QTE started → Skill: '{skill.skillName}' " +
+            Debug.Log($"[MockCombatTester] QTE started - Skill: '{skill.skillName}' " +
                       $"| Duration: {skill.duration}s " +
-                      $"| Good: [{skill.goodWindowStart:F2}–{skill.goodWindowEnd:F2}] " +
-                      $"| Perfect: [{skill.perfectWindowStart:F2}–{skill.perfectWindowEnd:F2}]");
+                      $"| Good: [{skill.goodWindowStart:F2}-{skill.goodWindowEnd:F2}] " +
+                      $"| Perfect: [{skill.perfectWindowStart:F2}-{skill.perfectWindowEnd:F2}]");
         }
 
         /// <summary>
