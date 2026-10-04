@@ -6,9 +6,8 @@ using UnityEngine.UI;
 namespace Project.Combat.UI
 {
     /// <summary>
-    /// Displays and animates the status bar for a single combat unit
-    /// (hero or enemy). Receives atomic updates via public methods and
-    /// never polls game state or uses FindObjectOfType.
+    /// Displays and animates the status bar (Health, Mana, Portrait and Name)
+    /// for a combatant (hero or enemy) in accordance with the combat UI layout.
     /// </summary>
     public class CombatUnitUI : MonoBehaviour
     {
@@ -16,25 +15,69 @@ namespace Project.Combat.UI
         //  Serialized References
         // ─────────────────────────────────────────
 
-        [Header("Unit Info")]
+        [Header("Unit Info & Portrait")]
         [Tooltip("Label that displays the unit's name.")]
         [SerializeField] private TextMeshProUGUI nameText;
+
+        [Tooltip("Icon or portrait badge for the character.")]
+        [SerializeField] private Image portraitImage;
 
         [Header("HP Bar")]
         [Tooltip("Slider whose value represents current HP as a 0–1 ratio.")]
         [SerializeField] private Slider hpSlider;
 
-        [Tooltip("Label showing current and max HP in 'current / max' format.")]
+        [Tooltip("Label showing current and max HP.")]
         [SerializeField] private TextMeshProUGUI hpNumericText;
+
+        [Header("Mana Bar (Optional for Player)")]
+        [Tooltip("Slider whose value represents current Mana as a 0–1 ratio.")]
+        [SerializeField] private Slider manaSlider;
+
+        [Tooltip("Label showing current and max Mana.")]
+        [SerializeField] private TextMeshProUGUI manaNumericText;
+
+        // ─────────────────────────────────────────
+        //  Public Accessors / Setup
+        // ─────────────────────────────────────────
+
+        public Image PortraitImage => portraitImage;
+        public Slider ManaSlider => manaSlider;
+
+        public void ConfigureReferences(
+            TextMeshProUGUI name,
+            Image portrait,
+            Slider hp,
+            TextMeshProUGUI hpNumeric,
+            Slider mana = null,
+            TextMeshProUGUI manaNumeric = null)
+        {
+            nameText = name;
+            portraitImage = portrait;
+            hpSlider = hp;
+            hpNumericText = hpNumeric;
+            manaSlider = mana;
+            manaNumericText = manaNumeric;
+        }
+
+        public void SetPortrait(Image portrait)
+        {
+            portraitImage = portrait;
+        }
+
+        public void SetManaBar(Slider mana, TextMeshProUGUI manaNumeric)
+        {
+            manaSlider = mana;
+            manaNumericText = manaNumeric;
+        }
 
         // ─────────────────────────────────────────
         //  Private State
         // ─────────────────────────────────────────
 
-        /// <summary>Duration in seconds for the animated HP bar transition.</summary>
-        private const float HP_ANIM_DURATION = 0.25f;
+        private const float BAR_ANIM_DURATION = 0.25f;
 
         private Coroutine _hpAnimRoutine;
+        private Coroutine _mpAnimRoutine;
 
         // ─────────────────────────────────────────
         //  Public API
@@ -42,41 +85,85 @@ namespace Project.Combat.UI
 
         /// <summary>
         /// Sets up the unit panel with its initial values.
-        /// Call once when the battle starts or when this panel is reused.
         /// </summary>
-        /// <param name="unitName">Name displayed in the header label.</param>
-        /// <param name="currentHp">Starting HP value.</param>
-        /// <param name="maxHp">Maximum HP used to normalize the slider.</param>
         public void Initialize(string unitName, int currentHp, int maxHp)
         {
-            nameText.text = unitName;
-
-            // Snap to initial values without animation on setup.
-            hpSlider.value   = NormalizeHP(currentHp, maxHp);
-            hpNumericText.text = FormatHP(currentHp, maxHp);
+            Initialize(unitName, currentHp, maxHp, 0, 0, null);
         }
 
         /// <summary>
-        /// Updates the HP display. If <paramref name="animate"/> is true, the slider
-        /// smoothly interpolates to the new value over <see cref="HP_ANIM_DURATION"/> seconds.
-        /// The numeric text always updates instantly for accuracy.
+        /// Extended overload including Mana and optional Portrait.
         /// </summary>
-        /// <param name="currentHp">New current HP value.</param>
-        /// <param name="maxHp">Maximum HP (used to normalize the slider).</param>
-        /// <param name="animate">Whether to smoothly interpolate the bar. Default: true.</param>
+        public void Initialize(string unitName, int currentHp, int maxHp, int currentMp, int maxMp, Sprite portrait = null)
+        {
+            if (nameText != null)
+                nameText.text = unitName;
+
+            if (hpSlider != null)
+                hpSlider.value = NormalizeValue(currentHp, maxHp);
+
+            if (hpNumericText != null)
+                hpNumericText.text = FormatValue("Salud", currentHp, maxHp);
+
+            if (manaSlider != null)
+            {
+                if (maxMp > 0)
+                {
+                    manaSlider.gameObject.SetActive(true);
+                    manaSlider.value = NormalizeValue(currentMp, maxMp);
+                }
+                else
+                {
+                    manaSlider.gameObject.SetActive(false);
+                }
+            }
+
+            if (manaNumericText != null)
+            {
+                if (maxMp > 0)
+                {
+                    manaNumericText.gameObject.SetActive(true);
+                    manaNumericText.text = FormatValue("Maná", currentMp, maxMp);
+                }
+                else
+                {
+                    manaNumericText.gameObject.SetActive(false);
+                }
+            }
+
+            if (portrait != null)
+            {
+                SetPortrait(portrait);
+            }
+        }
+
+        public void SetPortrait(Sprite portrait)
+        {
+            if (portraitImage != null)
+            {
+                portraitImage.sprite = portrait;
+                portraitImage.gameObject.SetActive(portrait != null);
+            }
+        }
+
+        /// <summary>
+        /// Updates the HP display with optional smooth transition animation.
+        /// </summary>
         public void UpdateHP(int currentHp, int maxHp, bool animate = true)
         {
-            // Numeric text is always immediate — the player reads numbers first.
-            hpNumericText.text = FormatHP(currentHp, maxHp);
+            if (hpNumericText != null)
+                hpNumericText.text = FormatValue("Salud", currentHp, maxHp);
 
-            float targetValue = NormalizeHP(currentHp, maxHp);
+            if (hpSlider == null) return;
 
-            if (animate)
+            float targetValue = NormalizeValue(currentHp, maxHp);
+
+            if (animate && gameObject.activeInHierarchy)
             {
                 if (_hpAnimRoutine != null)
                     StopCoroutine(_hpAnimRoutine);
 
-                _hpAnimRoutine = StartCoroutine(AnimateSlider(hpSlider.value, targetValue));
+                _hpAnimRoutine = StartCoroutine(AnimateSlider(hpSlider, hpSlider.value, targetValue, () => _hpAnimRoutine = null));
             }
             else
             {
@@ -90,48 +177,68 @@ namespace Project.Combat.UI
             }
         }
 
+        /// <summary>
+        /// Updates the Mana display with optional smooth transition animation.
+        /// </summary>
+        public void UpdateMana(int currentMp, int maxMp, bool animate = true)
+        {
+            if (manaNumericText != null)
+                manaNumericText.text = FormatValue("Maná", currentMp, maxMp);
+
+            if (manaSlider == null) return;
+
+            float targetValue = NormalizeValue(currentMp, maxMp);
+
+            if (animate && gameObject.activeInHierarchy)
+            {
+                if (_mpAnimRoutine != null)
+                    StopCoroutine(_mpAnimRoutine);
+
+                _mpAnimRoutine = StartCoroutine(AnimateSlider(manaSlider, manaSlider.value, targetValue, () => _mpAnimRoutine = null));
+            }
+            else
+            {
+                if (_mpAnimRoutine != null)
+                {
+                    StopCoroutine(_mpAnimRoutine);
+                    _mpAnimRoutine = null;
+                }
+
+                manaSlider.value = targetValue;
+            }
+        }
+
         // ─────────────────────────────────────────
         //  Coroutines
         // ─────────────────────────────────────────
 
-        private IEnumerator AnimateSlider(float fromValue, float toValue)
+        private IEnumerator AnimateSlider(Slider slider, float fromValue, float toValue, System.Action onComplete)
         {
             float elapsed = 0f;
 
-            while (elapsed < HP_ANIM_DURATION)
+            while (elapsed < BAR_ANIM_DURATION)
             {
                 elapsed += Time.deltaTime;
-
-                // SmoothStep eases in/out for a polished feel.
-                float t = Mathf.SmoothStep(0f, 1f, elapsed / HP_ANIM_DURATION);
-                hpSlider.value = Mathf.Lerp(fromValue, toValue, t);
-
+                float t = Mathf.SmoothStep(0f, 1f, elapsed / BAR_ANIM_DURATION);
+                slider.value = Mathf.Lerp(fromValue, toValue, t);
                 yield return null;
             }
 
-            // Guarantee exact target value on completion.
-            hpSlider.value = toValue;
-            _hpAnimRoutine = null;
+            slider.value = toValue;
+            onComplete?.Invoke();
         }
 
         // ─────────────────────────────────────────
         //  Helpers
         // ─────────────────────────────────────────
 
-        /// <summary>
-        /// Normalizes an HP value to the [0,1] range expected by <see cref="Slider"/>.
-        /// Guards against maxHp == 0 to prevent NaN.
-        /// </summary>
-        private static float NormalizeHP(int currentHp, int maxHp)
+        private static float NormalizeValue(int current, int max)
         {
-            if (maxHp <= 0) return 0f;
-            return Mathf.Clamp01((float)currentHp / maxHp);
+            if (max <= 0) return 0f;
+            return Mathf.Clamp01((float)current / max);
         }
 
-        /// <summary>
-        /// Returns a display string in "current / max" format.
-        /// </summary>
-        private static string FormatHP(int currentHp, int maxHp)
-            => $"{Mathf.Max(0, currentHp)} / {Mathf.Max(0, maxHp)}";
+        private static string FormatValue(string label, int current, int max)
+            => $"{label} {Mathf.Max(0, current)}/{Mathf.Max(0, max)}";
     }
 }

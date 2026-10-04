@@ -79,10 +79,16 @@ namespace JPTJL.Combat
                 else if (kb.spaceKey.wasPressedThisFrame) combatController.TriggerQTEInput();
             }
 
-            // 3. Ventana Defensiva en turno enemigo (Z = Parry, X = Dodge)
+            // 3. Ventana Defensiva en turno enemigo (Z, Espacio o Clic = Parry; X = Dodge)
             if (combatController.StateMachine?.CurrentState is States.DefenseWindowState)
             {
-                if (kb.zKey.wasPressedThisFrame) combatController.TriggerDefenseInput(DefenseType.Parry);
+                bool parryPressed = kb.zKey.wasPressedThisFrame || kb.spaceKey.wasPressedThisFrame;
+                if (UnityEngine.InputSystem.Mouse.current != null && UnityEngine.InputSystem.Mouse.current.leftButton.wasPressedThisFrame)
+                {
+                    parryPressed = true;
+                }
+
+                if (parryPressed) combatController.TriggerDefenseInput(DefenseType.Parry);
                 else if (kb.xKey.wasPressedThisFrame) combatController.TriggerDefenseInput(DefenseType.Dodge);
             }
 #else
@@ -108,8 +114,14 @@ namespace JPTJL.Combat
 
             if (combatController.StateMachine?.CurrentState is States.DefenseWindowState)
             {
-                if (Input.GetKeyDown(KeyCode.Z)) combatController.TriggerDefenseInput(DefenseType.Parry);
-                else if (Input.GetKeyDown(KeyCode.X)) combatController.TriggerDefenseInput(DefenseType.Dodge);
+                if (Input.GetKeyDown(KeyCode.Z) || Input.GetKeyDown(KeyCode.Space) || Input.GetMouseButtonDown(0))
+                {
+                    combatController.TriggerDefenseInput(DefenseType.Parry);
+                }
+                else if (Input.GetKeyDown(KeyCode.X))
+                {
+                    combatController.TriggerDefenseInput(DefenseType.Dodge);
+                }
             }
 #endif
         }

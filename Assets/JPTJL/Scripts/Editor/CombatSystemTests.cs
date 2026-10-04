@@ -4,6 +4,7 @@ using UnityEngine;
 using JPTJL.Combat;
 using JPTJL.Data;
 using JPTJL.Timing;
+using JPTJL.Damage;
 
 namespace JPTJL.Tests
 {
@@ -160,6 +161,108 @@ namespace JPTJL.Tests
 
             Assert.IsFalse(resolvedHits[1].IsSuccess, "Hit 2 was wrong -> FALLO (1.0x base)");
             Assert.AreEqual(1.0f, resolvedHits[1].DamageMultiplier, 0.001f);
+        }
+
+        [Test]
+        public void Test_Health_Potion_Restores_Health_Capped_At_Max()
+        {
+            CharacterStatsData stats = ScriptableObject.CreateInstance<CharacterStatsData>();
+            var so = new UnityEditor.SerializedObject(stats);
+            so.FindProperty("maxHealth").intValue = 100;
+            so.ApplyModifiedPropertiesWithoutUndo();
+
+            CombatParticipant participant = new CombatParticipant(stats);
+            participant.TakeDamage(50); // HP is now 50
+            Assert.AreEqual(50, participant.CurrentHealth);
+
+            // Act 1: Heal 35 (Health Potion)
+            participant.Heal(35);
+            Assert.AreEqual(85, participant.CurrentHealth);
+
+            // Act 2: Heal another 35 (should cap at max 100)
+            participant.Heal(35);
+            Assert.AreEqual(100, participant.CurrentHealth);
+        }
+
+        [Test]
+        public void Test_Mana_Potion_Restores_Mana_Capped_At_Max()
+        {
+            CharacterStatsData stats = ScriptableObject.CreateInstance<CharacterStatsData>();
+            var so = new UnityEditor.SerializedObject(stats);
+            so.FindProperty("maxMana").intValue = 50;
+            so.ApplyModifiedPropertiesWithoutUndo();
+
+            CombatParticipant participant = new CombatParticipant(stats);
+            participant.ConsumeMana(40); // MP is now 10
+            Assert.AreEqual(10, participant.CurrentMana);
+
+            // Act 1: Restore 25 (Mana Potion)
+            participant.RestoreMana(25);
+            Assert.AreEqual(35, participant.CurrentMana);
+
+            // Act 2: Restore another 25 (should cap at max 50)
+            participant.RestoreMana(25);
+            Assert.AreEqual(50, participant.CurrentMana);
+        }
+
+        [Test]
+        public void Test_Perfect_Parry_Deflects_All_Enemy_Damage_To_Zero_And_Reflects_Counter_Damage()
+        {
+            CharacterStatsData attackerStats = ScriptableObject.CreateInstance<CharacterStatsData>();
+            var soAttacker = new UnityEditor.SerializedObject(attackerStats);
+            soAttacker.FindProperty("baseAttack").intValue = 20;
+            soAttacker.ApplyModifiedPropertiesWithoutUndo();
+
+            CharacterStatsData defenderStats = ScriptableObject.CreateInstance<CharacterStatsData>();
+            var soDefender = new UnityEditor.SerializedObject(defenderStats);
+            soDefender.FindProperty("baseDefense").intValue = 0;
+            soDefender.FindProperty("maxHealth").intValue = 100;
+            soDefender.ApplyModifiedPropertiesWithoutUndo();
+
+            CombatParticipant attacker = new CombatParticipant(attackerStats);
+            CombatParticipant defender = new CombatParticipant(defenderStats);
+
+            SkillData attackSkill = ScriptableObject.CreateInstance<SkillData>();
+            var soSkill = new UnityEditor.SerializedObject(attackSkill);
+            soSkill.FindProperty("baseDamage").intValue = 20;
+            soSkill.ApplyModifiedPropertiesWithoutUndo();
+
+            // Act: Calculate damage with Perfect Parry
+            DamageResult result = DamageCalculator.Calculate(
+                attacker: attackerStats,
+                defender: defenderStats,
+                skill: attackSkill,
+                attackTiming: TimingResult.Good,
+                defenseAction: DefenseType.Parry,
+                defenseTiming: TimingResult.Perfect
+            );
+
+            // Assert: 100% damage deflected away from player (0 damage taken!)
+            Assert.AreEqual(0, result.FinalDamage, "Perfect Parry must deflect 100% of the damage so the player takes 0 damage.");
+            Assert.IsTrue(result.WasParried);
+            Assert.Greater(result.CounterDamage, 0, "Counter damage must be reflected back against the enemy attacker.");
+        }
+
+        [Test]
+        public void Test_Parry_Window_Is_200_Milliseconds()
+        {
+            // Total parry window: targetTime 0.50s, 0.10s perfect threshold => 0.20s = 200 milliseconds total window
+            TimingWindowConfig config = new TimingWindowConfig(0.85f, 0.50f, 0.10f, 0.20f, false);
+            
+            float windowDuration = (config.TargetTime + config.PerfectThreshold) - (config.TargetTime - config.PerfectThreshold);
+            Assert.AreEqual(0.20f, windowDuration, 0.001f, "Parry window duration must be exactly 200 milliseconds (0.20s)");
+
+            // Hit 90ms before impact (inside 200ms window) => Perfect
+            Assert.AreEqual(TimingResult.Perfect, config.Evaluate(0.41f));
+
+            // Hit 90ms after impact (inside 200ms window) => Perfect
+            Assert.AreEqual(TimingResult.Perfect, config.Evaluate(0.59f));
+
+            // Hit right at impact => Perfect
+            Assert.AreEqual(TimingResult.Perfect, config.Evaluate(0.50f));
+
+            // Hit outside 200ms window (e.g. 150ms before impact) => Not Perfect
+            Assert.AreNotEqual(TimingResult.Perfect, config.Evaluate(0.35f));
         }
     }
 }

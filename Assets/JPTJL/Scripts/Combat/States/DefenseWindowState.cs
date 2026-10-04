@@ -25,8 +25,8 @@ namespace JPTJL.Combat.States
 
             CombatEvents.TriggerPhaseChanged(CombatPhase.DefenseWindow);
 
-            // Defensive window configuration (e.g. 0.8s duration, target attack collision at 0.5s, 60ms perfect parry threshold)
-            TimingWindowConfig defenseConfig = new TimingWindowConfig(0.85f, 0.50f, 0.06f, 0.18f, false);
+            // Defensive window configuration: 0.85s total duration, target attack collision at 0.50s, 200ms total parry window (0.10s perfect threshold)
+            TimingWindowConfig defenseConfig = new TimingWindowConfig(0.85f, 0.50f, 0.10f, 0.20f, false);
             controller.ActiveDefenseConfig = defenseConfig;
 
             CombatEvents.TriggerDefenseWindowStarted(DefenseType.None, defenseConfig);

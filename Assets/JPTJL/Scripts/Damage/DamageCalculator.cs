@@ -53,10 +53,10 @@ namespace JPTJL.Damage
                 switch (defenseTiming)
                 {
                     case TimingResult.Perfect:
-                        // Perfect Parry: 100% damage nullified + counter attack damage reflected to attacker
+                        // Perfect Parry: 100% damage nullified + 100% counter attack damage reflected to attacker
                         defenseMitigation = 1.0f;
                         wasParried = true;
-                        counterDamage = Mathf.RoundToInt(postArmorDamage * 0.5f);
+                        counterDamage = Mathf.RoundToInt(postArmorDamage * 1.0f);
                         break;
                     case TimingResult.Good:
                         // Good Parry: 60% damage mitigation

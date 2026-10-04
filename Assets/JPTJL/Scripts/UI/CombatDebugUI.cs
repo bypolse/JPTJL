@@ -18,6 +18,16 @@ namespace JPTJL.UI
         [SerializeField] private CombatController combatController;
         [SerializeField] private SkillData[] skills;
 
+        [Header("Legacy Display Options")]
+        [Tooltip("If false, legacy IMGUI health boxes are hidden in favor of the modern Canvas HUD.")]
+        [SerializeField] private bool showLegacyHealthBars = false;
+
+        [Tooltip("If false, legacy IMGUI ability selection deck is hidden in favor of CombatActionMenu.")]
+        [SerializeField] private bool showLegacyActionDeck = false;
+
+        [Tooltip("If false, legacy IMGUI top header banner is hidden in favor of Canvas HUD.")]
+        [SerializeField] private bool showLegacyHeader = false;
+
         // Feedback message state
         private string activeFeedbackText = "";
         private Color activeFeedbackColor = Color.white;
@@ -110,11 +120,17 @@ namespace JPTJL.UI
             GUI.skin.button.fontSize = 14;
 
             // 1. Top Header: Combat State Badge
-            DrawHeaderBanner();
+            if (showLegacyHeader)
+            {
+                DrawHeaderBanner();
+            }
 
             // 2. Character Status Boxes (Left: Player, Right: Enemy)
-            DrawCombatantCard(new Rect(30, 70, 320, 160), combatController.Player, true);
-            DrawCombatantCard(new Rect(Screen.width - 350, 70, 320, 160), combatController.Enemy, false);
+            if (showLegacyHealthBars)
+            {
+                DrawCombatantCard(new Rect(30, 70, 320, 160), combatController.Player, true);
+                DrawCombatantCard(new Rect(Screen.width - 350, 70, 320, 160), combatController.Enemy, false);
+            }
 
             // 3. Center QTE Overlay (when active)
             if (isQTEPromptActive && combatController.CurrentTurnState == CombatTurnState.EjecutandoQTE)
@@ -129,13 +145,16 @@ namespace JPTJL.UI
             }
 
             // 5. Bottom Action Deck: Ability Selection (TurnoJugador)
-            if (combatController.CurrentTurnState == CombatTurnState.TurnoJugador)
+            if (showLegacyActionDeck)
             {
-                DrawAbilityActionDeck();
-            }
-            else if (combatController.CurrentTurnState == CombatTurnState.FinCombate)
-            {
-                DrawBattleEndPrompt();
+                if (combatController.CurrentTurnState == CombatTurnState.TurnoJugador)
+                {
+                    DrawAbilityActionDeck();
+                }
+                else if (combatController.CurrentTurnState == CombatTurnState.FinCombate)
+                {
+                    DrawBattleEndPrompt();
+                }
             }
         }
 

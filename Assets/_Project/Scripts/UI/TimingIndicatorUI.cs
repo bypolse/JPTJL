@@ -77,6 +77,12 @@ namespace Project.Combat.UI
         // True while ShrinkRoutine is running and awaiting player input.
         private bool _isActive;
 
+        private void Awake()
+        {
+            if (visualRoot != null) visualRoot.SetActive(false);
+            if (feedbackText != null) feedbackText.gameObject.SetActive(false);
+        }
+
         // ─────────────────────────────────────────
         //  Public API
         // ─────────────────────────────────────────

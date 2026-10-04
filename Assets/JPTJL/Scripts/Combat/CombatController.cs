@@ -17,7 +17,10 @@ namespace JPTJL.Combat
         [SerializeField] private CharacterStatsData defaultEnemyStats;
         [SerializeField] private SkillData defaultPlayerSkill;
         [SerializeField] private SkillData defaultEnemySkill;
+        [SerializeField] private SkillData[] playerSkills;
         [SerializeField] private bool autoStartBattle = true;
+
+        public SkillData[] PlayerSkills => playerSkills;
 
         // Core Components
         public StateMachine StateMachine { get; private set; }
@@ -126,6 +129,47 @@ namespace JPTJL.Combat
             if (StateMachine.CurrentState is ActionSelectionState actionState)
             {
                 actionState.OnSkillChosen(skill);
+            }
+        }
+
+        /// <summary>
+        /// Consumes a health potion to restore HP to the player and passes turn to the enemy.
+        /// </summary>
+        public void UseHealthPotion(int amount = 35)
+        {
+            if (Player == null) return;
+            if (StateMachine.CurrentState is ActionSelectionState)
+            {
+                Player.Heal(amount);
+                CombatEvents.TriggerFloatingFeedback($"+{amount} SALUD", Color.green);
+                StateMachine.ChangeState(EnemyTurnState);
+            }
+        }
+
+        /// <summary>
+        /// Consumes a mana potion to restore MP to the player and passes turn to the enemy.
+        /// </summary>
+        public void UseManaPotion(int amount = 25)
+        {
+            if (Player == null) return;
+            if (StateMachine.CurrentState is ActionSelectionState)
+            {
+                Player.RestoreMana(amount);
+                CombatEvents.TriggerFloatingFeedback($"+{amount} MANÁ", Color.cyan);
+                StateMachine.ChangeState(EnemyTurnState);
+            }
+        }
+
+        /// <summary>
+        /// Flees the active combat encounter.
+        /// </summary>
+        public void FleeCombat()
+        {
+            if (StateMachine.CurrentState is ActionSelectionState)
+            {
+                CombatEvents.TriggerFloatingFeedback("¡HUISTE DEL COMBATE!", Color.yellow);
+                BattleWon = false;
+                StateMachine.ChangeState(BattleEndState);
             }
         }
 
