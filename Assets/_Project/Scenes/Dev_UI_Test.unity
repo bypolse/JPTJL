@@ -380,12 +380,48 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 184380092208847514, guid: 02cb3c7c278b5495b917e50051be2a4f, type: 3}
+      propertyPath: m_Color.b
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 184380092208847514, guid: 02cb3c7c278b5495b917e50051be2a4f, type: 3}
+      propertyPath: m_Color.g
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 184380092208847514, guid: 02cb3c7c278b5495b917e50051be2a4f, type: 3}
+      propertyPath: m_Color.r
+      value: 0.754717
+      objectReference: {fileID: 0}
+    - target: {fileID: 865763492402106651, guid: 02cb3c7c278b5495b917e50051be2a4f, type: 3}
+      propertyPath: m_Value
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 1367223240130268315, guid: 02cb3c7c278b5495b917e50051be2a4f, type: 3}
+      propertyPath: m_SizeDelta.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1367223240130268315, guid: 02cb3c7c278b5495b917e50051be2a4f, type: 3}
+      propertyPath: m_AnchoredPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2590315224231623487, guid: 02cb3c7c278b5495b917e50051be2a4f, type: 3}
+      propertyPath: m_AnchorMax.x
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 2590315224231623487, guid: 02cb3c7c278b5495b917e50051be2a4f, type: 3}
       propertyPath: m_AnchorMax.y
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4210082366635282201, guid: 02cb3c7c278b5495b917e50051be2a4f, type: 3}
+      propertyPath: m_AnchorMax.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4210082366635282201, guid: 02cb3c7c278b5495b917e50051be2a4f, type: 3}
       propertyPath: m_AnchorMax.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4210082366635282201, guid: 02cb3c7c278b5495b917e50051be2a4f, type: 3}
+      propertyPath: m_SizeDelta.x
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 4640022090023672529, guid: 02cb3c7c278b5495b917e50051be2a4f, type: 3}
@@ -468,9 +504,25 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 4669381320901463036, guid: 02cb3c7c278b5495b917e50051be2a4f, type: 3}
+      propertyPath: m_Value
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 6197710663921796263, guid: 02cb3c7c278b5495b917e50051be2a4f, type: 3}
       propertyPath: m_Name
       value: Canvas
+      objectReference: {fileID: 0}
+    - target: {fileID: 8224591004062434027, guid: 02cb3c7c278b5495b917e50051be2a4f, type: 3}
+      propertyPath: m_Color.b
+      value: 0.122713864
+      objectReference: {fileID: 0}
+    - target: {fileID: 8224591004062434027, guid: 02cb3c7c278b5495b917e50051be2a4f, type: 3}
+      propertyPath: m_Color.g
+      value: 0.8962264
+      objectReference: {fileID: 0}
+    - target: {fileID: 8224591004062434027, guid: 02cb3c7c278b5495b917e50051be2a4f, type: 3}
+      propertyPath: m_Color.r
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []

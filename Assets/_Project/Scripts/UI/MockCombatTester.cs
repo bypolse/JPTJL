@@ -1,18 +1,18 @@
 using Project.Combat.Data;
+using Project.Combat.Events;
+using Project.Combat.UI;
 using UnityEngine;
 
 namespace Project.Combat.Testing
 {
     /// <summary>
-    /// Sandbox tester for the combat UI layer.
-    /// Simulates input events without requiring a real CombatManager.
+    /// Sandbox tester for the combat UI layer decoupled via Event Bus (CombatEvents).
+    /// Simulates combat events without requiring a full battle manager.
     ///
-    /// Hotkeys:
-    ///   Space → Launch QTE shrink ring (first skill in heroData)
-    ///   H     → Deal 15 damage to the hero
-    ///   J     → Deal 25 damage to the enemy
-    ///
-    /// Wire all references in the Inspector. No FindObjectOfType is used.
+    /// Controls:
+    ///   Space → Trigger QTE / TryHit (two-phase toggle)
+    ///   H     → Deal 15 damage to the hero via CombatEvents.UpdateHealth
+    ///   J     → Deal 25 damage to the enemy via CombatEvents.UpdateHealth
     /// </summary>
     public class MockCombatTester : MonoBehaviour
     {
@@ -22,13 +22,13 @@ namespace Project.Combat.Testing
 
         [Header("UI Controllers")]
         [Tooltip("The QTE shrink-ring controller.")]
-        [SerializeField] private Project.Combat.UI.TimingIndicatorUI timingUI;
+        [SerializeField] private TimingIndicatorUI timingUI;
 
         [Tooltip("Status bar for the player hero.")]
-        [SerializeField] private Project.Combat.UI.CombatUnitUI heroUI;
+        [SerializeField] private CombatUnitUI heroUI;
 
         [Tooltip("Status bar for the enemy.")]
-        [SerializeField] private Project.Combat.UI.CombatUnitUI enemyUI;
+        [SerializeField] private CombatUnitUI enemyUI;
 
         [Header("ScriptableObject Data")]
         [Tooltip("Stats SO for the hero character.")]
@@ -48,6 +48,16 @@ namespace Project.Combat.Testing
         //  Unity Lifecycle
         // ─────────────────────────────────────────
 
+        private void OnEnable()
+        {
+            CombatEvents.OnQTECompleted += HandleQTECompleted;
+        }
+
+        private void OnDisable()
+        {
+            CombatEvents.OnQTECompleted -= HandleQTECompleted;
+        }
+
         private void Start()
         {
             if (!ValidateReferences()) return;
@@ -57,10 +67,10 @@ namespace Project.Combat.Testing
             _enemyCurrentHp = enemyData.maxHP;
 
             // Push initial state to both unit panels.
-            heroUI.Initialize(heroData.characterName,   _heroCurrentHp,  heroData.maxHP);
-            enemyUI.Initialize(enemyData.characterName, _enemyCurrentHp, enemyData.maxHP);
+            heroUI.Initialize(heroData.characterName,   _heroCurrentHp,  heroData.maxHP, "Hero");
+            enemyUI.Initialize(enemyData.characterName, _enemyCurrentHp, enemyData.maxHP, "Enemy");
 
-            Debug.Log("[MockCombatTester] Initialized — Space: QTE | H: Hit Hero | J: Hit Enemy");
+            Debug.Log("[MockCombatTester] Initialized via Event Bus — Space: QTE | H: Hit Hero | J: Hit Enemy");
         }
 
         private void Update()
@@ -72,32 +82,62 @@ namespace Project.Combat.Testing
         }
 
         // ─────────────────────────────────────────
+        //  Event Bus Handlers
+        // ─────────────────────────────────────────
+
+        private void HandleQTECompleted(TimingResult result)
+        {
+            if (result == TimingResult.None) return;
+
+            SkillData skill = heroData != null ? heroData.GetSkill(0) : null;
+            int baseDamage = skill != null ? skill.baseDamage : (heroData != null ? heroData.baseAttack : 20);
+
+            int damage = 0;
+            switch (result)
+            {
+                case TimingResult.Perfect:
+                    damage = Mathf.RoundToInt(baseDamage * 1.5f);
+                    break;
+                case TimingResult.Good:
+                    damage = baseDamage;
+                    break;
+                case TimingResult.Miss:
+                    damage = 0;
+                    break;
+            }
+
+            if (damage > 0)
+            {
+                _enemyCurrentHp = Mathf.Max(0, _enemyCurrentHp - damage);
+            }
+
+            int maxEnemyHp = enemyData != null ? enemyData.maxHP : 100;
+            CombatEvents.UpdateHealth("Enemy", _enemyCurrentHp, maxEnemyHp);
+
+            Debug.Log($"[MockCombatTester] QTE Completed: {result}! Simulated Damage dealt to Enemy: {damage}. Enemy HP: {_enemyCurrentHp} / {maxEnemyHp}");
+        }
+
+        // ─────────────────────────────────────────
         //  Input Handlers
         // ─────────────────────────────────────────
 
         /// <summary>
-        /// Space — Launch the shrink-ring QTE using the hero's first skill.
-        /// Falls back gracefully if heroData has no skills assigned.
-        /// </summary>
-/// <summary>
         /// Space - two-phase toggle:
-        ///   - Indicator OFF: start the QTE with the hero's first skill.
-        ///   - Indicator ON:  call TryHit() and log the result.
-        /// Falls back gracefully if heroData has no skills assigned.
+        ///   - Indicator OFF: triggers CombatEvents.TriggerQTE with hero's first skill.
+        ///   - Indicator ON:  calls timingUI.TryHit(), which resolves timing and fires CombatEvents.CompleteQTE.
         /// </summary>
         private void HandleQTEInput()
         {
             if (!Input.GetKeyDown(KeyCode.Space)) return;
 
-            // Phase 2: indicator is running - evaluate the player's hit.
+            // Phase 2: indicator is active — evaluate player hit.
             if (timingUI.IsActive)
             {
-                Project.Combat.UI.TimingResult resultado = timingUI.TryHit();
-                Debug.Log($"Resultado del QTE: {resultado}");
+                timingUI.TryHit();
                 return;
             }
 
-            // Phase 1: indicator is idle - launch the QTE.
+            // Phase 1: indicator is idle — launch QTE via Event Bus.
             SkillData skill = heroData.GetSkill(0);
 
             if (skill == null)
@@ -107,38 +147,33 @@ namespace Project.Combat.Testing
                 return;
             }
 
-            timingUI.ShowIndicator(
-                skill.duration,
-                skill.goodWindowStart,
-                skill.goodWindowEnd,
-                skill.perfectWindowStart,
-                skill.perfectWindowEnd);
+            if (timingUI != null && !timingUI.gameObject.activeInHierarchy)
+            {
+                timingUI.gameObject.SetActive(true);
+            }
 
-            Debug.Log($"[MockCombatTester] QTE started - Skill: '{skill.skillName}' " +
-                      $"| Duration: {skill.duration}s " +
-                      $"| Good: [{skill.goodWindowStart:F2}-{skill.goodWindowEnd:F2}] " +
-                      $"| Perfect: [{skill.perfectWindowStart:F2}-{skill.perfectWindowEnd:F2}]");
+            Debug.Log($"[MockCombatTester] Triggering QTE via Event Bus for skill: '{skill.skillName}'");
+            CombatEvents.TriggerQTE(skill);
         }
 
         /// <summary>
-        /// H → deal 15 damage to the hero.
-        /// J → deal 25 damage to the enemy.
-        /// HP is floored at 0 to avoid negative display values.
+        /// H → deals 15 damage to the hero via CombatEvents.UpdateHealth.
+        /// J → deals 25 damage to the enemy via CombatEvents.UpdateHealth.
         /// </summary>
         private void HandleDamageInput()
         {
             if (Input.GetKeyDown(KeyCode.H))
             {
                 _heroCurrentHp = Mathf.Max(0, _heroCurrentHp - 15);
-                heroUI.UpdateHP(_heroCurrentHp, heroData.maxHP, animate: true);
-                Debug.Log($"[MockCombatTester] Hero hit! HP: {_heroCurrentHp} / {heroData.maxHP}");
+                CombatEvents.UpdateHealth("Hero", _heroCurrentHp, heroData.maxHP);
+                Debug.Log($"[MockCombatTester] Hero hit via Event Bus! HP: {_heroCurrentHp} / {heroData.maxHP}");
             }
 
             if (Input.GetKeyDown(KeyCode.J))
             {
                 _enemyCurrentHp = Mathf.Max(0, _enemyCurrentHp - 25);
-                enemyUI.UpdateHP(_enemyCurrentHp, enemyData.maxHP, animate: true);
-                Debug.Log($"[MockCombatTester] Enemy hit! HP: {_enemyCurrentHp} / {enemyData.maxHP}");
+                CombatEvents.UpdateHealth("Enemy", _enemyCurrentHp, enemyData.maxHP);
+                Debug.Log($"[MockCombatTester] Enemy hit via Event Bus! HP: {_enemyCurrentHp} / {enemyData.maxHP}");
             }
         }
 
@@ -146,10 +181,6 @@ namespace Project.Combat.Testing
         //  Validation
         // ─────────────────────────────────────────
 
-        /// <summary>
-        /// Guards all entry points against missing Inspector references.
-        /// Logs a clear error once so the developer can fix it immediately.
-        /// </summary>
         private bool ValidateReferences()
         {
             if (timingUI  == null) { LogMissing(nameof(timingUI));  return false; }
