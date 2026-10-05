@@ -600,6 +600,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c07b6cda64ea54e0d8a604d894fa06b0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Project.Combat.UI.CombatUnitUI
+  unitId: Enemy
   nameText: {fileID: 4780577063082080973}
   hpSlider: {fileID: 4669381320901463036}
   hpNumericText: {fileID: 1142980216692576289}
@@ -767,6 +768,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c07b6cda64ea54e0d8a604d894fa06b0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Project.Combat.UI.CombatUnitUI
+  unitId: Hero
   nameText: {fileID: 1555781959991844398}
   hpSlider: {fileID: 865763492402106651}
   hpNumericText: {fileID: 6437696984078287841}

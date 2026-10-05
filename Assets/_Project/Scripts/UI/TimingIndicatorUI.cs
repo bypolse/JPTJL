@@ -1,4 +1,6 @@
 using System.Collections;
+using Project.Combat.Data;
+using Project.Combat.Events;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -37,6 +39,55 @@ namespace Project.Combat.UI
 
         public bool IsActive => _isActive;
 
+        // ─────────────────────────────────────────
+        //  Unity Lifecycle
+        // ─────────────────────────────────────────
+
+        private void Awake()
+        {
+            if (visualRoot != null)
+                visualRoot.SetActive(true);
+
+            if (targetRing != null)
+                targetRing.gameObject.SetActive(true);
+
+            if (shrinkingRing != null)
+                shrinkingRing.gameObject.SetActive(false);
+
+            if (feedbackText != null)
+                feedbackText.gameObject.SetActive(false);
+        }
+
+        private void OnEnable()
+        {
+            CombatEvents.OnQTETriggered += HandleQTETriggered;
+        }
+
+        private void OnDisable()
+        {
+            CombatEvents.OnQTETriggered -= HandleQTETriggered;
+        }
+
+        // ─────────────────────────────────────────
+        //  Event Bus Handlers
+        // ─────────────────────────────────────────
+
+        private void HandleQTETriggered(SkillData skill)
+        {
+            if (skill == null) return;
+
+            ShowIndicator(
+                skill.duration,
+                skill.goodWindowStart,
+                skill.goodWindowEnd,
+                skill.perfectWindowStart,
+                skill.perfectWindowEnd);
+        }
+
+        // ─────────────────────────────────────────
+        //  Public API
+        // ─────────────────────────────────────────
+
         public void ShowIndicator(
             float duration,
             float goodStart, float goodEnd,
@@ -52,11 +103,24 @@ namespace Project.Combat.UI
             _currentNormalizedTime = 0f;
             _isActive = true;
 
-            visualRoot.SetActive(true);
-            feedbackText.gameObject.SetActive(false);
-            shrinkingRing.gameObject.SetActive(true);
-            shrinkingRing.localScale = StartScale;
-            shrinkingImage.color = normalColor;
+            // Ensure the main container and all child visual elements are active
+            if (visualRoot != null)
+                visualRoot.SetActive(true);
+
+            if (targetRing != null)
+                targetRing.gameObject.SetActive(true);
+
+            if (shrinkingRing != null)
+            {
+                shrinkingRing.gameObject.SetActive(true);
+                shrinkingRing.localScale = StartScale;
+            }
+
+            if (shrinkingImage != null)
+                shrinkingImage.color = normalColor;
+
+            if (feedbackText != null)
+                feedbackText.gameObject.SetActive(false);
 
             _shrinkRoutine = StartCoroutine(
                 ShrinkRoutine(duration, goodStart, goodEnd, perfectStart, perfectEnd));
@@ -74,7 +138,9 @@ namespace Project.Combat.UI
             }
 
             _isActive = false;
-            shrinkingRing.gameObject.SetActive(false);
+
+            if (shrinkingRing != null)
+                shrinkingRing.gameObject.SetActive(false);
 
             TimingResult result;
             if (_currentNormalizedTime >= _perfectStart && _currentNormalizedTime <= _perfectEnd)
@@ -93,6 +159,7 @@ namespace Project.Combat.UI
                 DisplayFeedback("MISS", missColor);
             }
 
+            CombatEvents.CompleteQTE(result);
             return result;
         }
 
@@ -100,9 +167,21 @@ namespace Project.Combat.UI
         {
             _isActive = false;
             StopAllActiveCoroutines();
-            if (visualRoot != null)
+
+            if (shrinkingRing != null)
+                shrinkingRing.gameObject.SetActive(false);
+
+            if (feedbackText != null)
+                feedbackText.gameObject.SetActive(false);
+
+            // Keep visualRoot active if it hosts this component or the targetRing frame
+            if (visualRoot != null && visualRoot != gameObject)
                 visualRoot.SetActive(false);
         }
+
+        // ─────────────────────────────────────────
+        //  Coroutines
+        // ─────────────────────────────────────────
 
         private IEnumerator ShrinkRoutine(
             float duration,
@@ -116,14 +195,18 @@ namespace Project.Combat.UI
                 elapsed += Time.deltaTime;
                 _currentNormalizedTime = Mathf.Clamp01(elapsed / duration);
 
-                shrinkingRing.localScale = Vector3.Lerp(StartScale, EndScale, _currentNormalizedTime);
+                if (shrinkingRing != null)
+                    shrinkingRing.localScale = Vector3.Lerp(StartScale, EndScale, _currentNormalizedTime);
 
-                if (_currentNormalizedTime >= perfectStart && _currentNormalizedTime <= perfectEnd)
-                    shrinkingImage.color = perfectColor;
-                else if (_currentNormalizedTime >= goodStart && _currentNormalizedTime <= goodEnd)
-                    shrinkingImage.color = goodColor;
-                else
-                    shrinkingImage.color = normalColor;
+                if (shrinkingImage != null)
+                {
+                    if (_currentNormalizedTime >= perfectStart && _currentNormalizedTime <= perfectEnd)
+                        shrinkingImage.color = perfectColor;
+                    else if (_currentNormalizedTime >= goodStart && _currentNormalizedTime <= goodEnd)
+                        shrinkingImage.color = goodColor;
+                    else
+                        shrinkingImage.color = normalColor;
+                }
 
                 yield return null;
             }
@@ -131,8 +214,12 @@ namespace Project.Combat.UI
             // Timeout / Miss
             _isActive = false;
             _shrinkRoutine = null;
-            shrinkingRing.gameObject.SetActive(false);
+
+            if (shrinkingRing != null)
+                shrinkingRing.gameObject.SetActive(false);
+
             DisplayFeedback("MISS", missColor);
+            CombatEvents.CompleteQTE(TimingResult.Miss);
         }
 
         private void DisplayFeedback(string text, Color color)
@@ -145,14 +232,23 @@ namespace Project.Combat.UI
 
         private IEnumerator FeedbackRoutine(string text, Color color)
         {
-            feedbackText.text = text;
-            feedbackText.color = color;
-            feedbackText.gameObject.SetActive(true);
+            if (feedbackText != null)
+            {
+                feedbackText.text = text;
+                feedbackText.color = color;
+                feedbackText.gameObject.SetActive(true);
+            }
 
             yield return new WaitForSeconds(0.6f);
 
-            feedbackText.gameObject.SetActive(false);
-            visualRoot.SetActive(false);
+            if (feedbackText != null)
+                feedbackText.gameObject.SetActive(false);
+
+            if (shrinkingRing != null)
+                shrinkingRing.gameObject.SetActive(false);
+
+            // NOTE: visualRoot is NOT deactivated here so the central target frame
+            // and the component's event listeners remain active and reactive for next attempts.
             _feedbackRoutine = null;
         }
 

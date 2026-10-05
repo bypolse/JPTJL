@@ -1,14 +1,16 @@
 using System.Collections;
+using Project.Combat.Events;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace Project.Combat.UI
 {
     /// <summary>
-    /// Displays and animates the status bar for a single combat unit
-    /// (hero or enemy). Receives atomic updates via public methods and
-    /// never polls game state or uses FindObjectOfType.
+    /// Displays and animates the status bar for a single combat unit (hero or enemy).
+    /// Listens to CombatEvents.OnUnitHealthChanged to update reactivity via Event Bus,
+    /// or receives direct atomic updates via public methods.
     /// </summary>
     public class CombatUnitUI : MonoBehaviour
     {
@@ -17,24 +19,59 @@ namespace Project.Combat.UI
         // ─────────────────────────────────────────
 
         [Header("Unit Info")]
+        [Tooltip("Unique identifier matching CombatEvents targetUnitId.")]
+        [SerializeField] private string unitId;
+
         [Tooltip("Label that displays the unit's name.")]
         [SerializeField] private TextMeshProUGUI nameText;
 
         [Header("HP Bar")]
-        [Tooltip("Slider whose value represents current HP as a 0–1 ratio.")]
+        [Tooltip("Slider displaying current HP.")]
         [SerializeField] private Slider hpSlider;
 
+        [FormerlySerializedAs("hpNumericText")]
         [Tooltip("Label showing current and max HP in 'current / max' format.")]
-        [SerializeField] private TextMeshProUGUI hpNumericText;
+        [SerializeField] private TextMeshProUGUI hpText;
 
         // ─────────────────────────────────────────
         //  Private State
         // ─────────────────────────────────────────
 
-        /// <summary>Duration in seconds for the animated HP bar transition.</summary>
         private const float HP_ANIM_DURATION = 0.25f;
-
         private Coroutine _hpAnimRoutine;
+
+        public string UnitId
+        {
+            get => unitId;
+            set => unitId = value;
+        }
+
+        // ─────────────────────────────────────────
+        //  Unity Lifecycle
+        // ─────────────────────────────────────────
+
+        private void OnEnable()
+        {
+            CombatEvents.OnUnitHealthChanged += HandleUnitHealthChanged;
+        }
+
+        private void OnDisable()
+        {
+            CombatEvents.OnUnitHealthChanged -= HandleUnitHealthChanged;
+        }
+
+        // ─────────────────────────────────────────
+        //  Event Bus Handler
+        // ─────────────────────────────────────────
+
+        private void HandleUnitHealthChanged(string targetUnitId, int currentHp, int maxHp)
+        {
+            if (string.Equals(targetUnitId, unitId, System.StringComparison.OrdinalIgnoreCase)
+                || (nameText != null && string.Equals(targetUnitId, nameText.text, System.StringComparison.OrdinalIgnoreCase)))
+            {
+                UpdateHP(currentHp, maxHp, animate: true);
+            }
+        }
 
         // ─────────────────────────────────────────
         //  Public API
@@ -42,41 +79,52 @@ namespace Project.Combat.UI
 
         /// <summary>
         /// Sets up the unit panel with its initial values.
-        /// Call once when the battle starts or when this panel is reused.
         /// </summary>
-        /// <param name="unitName">Name displayed in the header label.</param>
-        /// <param name="currentHp">Starting HP value.</param>
-        /// <param name="maxHp">Maximum HP used to normalize the slider.</param>
-        public void Initialize(string unitName, int currentHp, int maxHp)
+        public void Initialize(string unitName, int currentHp, int maxHp, string id = null)
         {
-            nameText.text = unitName;
+            if (nameText != null)
+                nameText.text = unitName;
 
-            // Snap to initial values without animation on setup.
-            hpSlider.value   = NormalizeHP(currentHp, maxHp);
-            hpNumericText.text = FormatHP(currentHp, maxHp);
+            if (!string.IsNullOrEmpty(id))
+                unitId = id;
+            else if (string.IsNullOrEmpty(unitId))
+                unitId = unitName;
+
+            if (hpSlider != null)
+            {
+                hpSlider.minValue = 0f;
+                hpSlider.maxValue = maxHp;
+                hpSlider.value    = Mathf.Clamp(currentHp, 0, maxHp);
+            }
+
+            if (hpText != null)
+                hpText.text = FormatHP(currentHp, maxHp);
         }
 
         /// <summary>
-        /// Updates the HP display. If <paramref name="animate"/> is true, the slider
-        /// smoothly interpolates to the new value over <see cref="HP_ANIM_DURATION"/> seconds.
-        /// The numeric text always updates instantly for accuracy.
+        /// Updates the HP display. If animate is true, smoothly interpolates the slider.
         /// </summary>
-        /// <param name="currentHp">New current HP value.</param>
-        /// <param name="maxHp">Maximum HP (used to normalize the slider).</param>
-        /// <param name="animate">Whether to smoothly interpolate the bar. Default: true.</param>
         public void UpdateHP(int currentHp, int maxHp, bool animate = true)
         {
-            // Numeric text is always immediate — the player reads numbers first.
-            hpNumericText.text = FormatHP(currentHp, maxHp);
+            int clampedHp = Mathf.Clamp(currentHp, 0, maxHp);
 
-            float targetValue = NormalizeHP(currentHp, maxHp);
+            if (hpSlider != null)
+            {
+                hpSlider.minValue = 0f;
+                hpSlider.maxValue = maxHp;
+            }
+
+            if (hpText != null)
+                hpText.text = FormatHP(clampedHp, maxHp);
+
+            if (hpSlider == null) return;
 
             if (animate)
             {
                 if (_hpAnimRoutine != null)
                     StopCoroutine(_hpAnimRoutine);
 
-                _hpAnimRoutine = StartCoroutine(AnimateSlider(hpSlider.value, targetValue));
+                _hpAnimRoutine = StartCoroutine(AnimateSlider(hpSlider.value, clampedHp));
             }
             else
             {
@@ -86,7 +134,7 @@ namespace Project.Combat.UI
                     _hpAnimRoutine = null;
                 }
 
-                hpSlider.value = targetValue;
+                hpSlider.value = clampedHp;
             }
         }
 
@@ -102,14 +150,12 @@ namespace Project.Combat.UI
             {
                 elapsed += Time.deltaTime;
 
-                // SmoothStep eases in/out for a polished feel.
                 float t = Mathf.SmoothStep(0f, 1f, elapsed / HP_ANIM_DURATION);
                 hpSlider.value = Mathf.Lerp(fromValue, toValue, t);
 
                 yield return null;
             }
 
-            // Guarantee exact target value on completion.
             hpSlider.value = toValue;
             _hpAnimRoutine = null;
         }
@@ -118,19 +164,6 @@ namespace Project.Combat.UI
         //  Helpers
         // ─────────────────────────────────────────
 
-        /// <summary>
-        /// Normalizes an HP value to the [0,1] range expected by <see cref="Slider"/>.
-        /// Guards against maxHp == 0 to prevent NaN.
-        /// </summary>
-        private static float NormalizeHP(int currentHp, int maxHp)
-        {
-            if (maxHp <= 0) return 0f;
-            return Mathf.Clamp01((float)currentHp / maxHp);
-        }
-
-        /// <summary>
-        /// Returns a display string in "current / max" format.
-        /// </summary>
         private static string FormatHP(int currentHp, int maxHp)
             => $"{Mathf.Max(0, currentHp)} / {Mathf.Max(0, maxHp)}";
     }
